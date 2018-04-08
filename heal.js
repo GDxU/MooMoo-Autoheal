@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         MOOMOO.IO AUTOHEAL -- WORKING AFTER PATCH
+// @name         Automatic Bull Helmet & Heal Mod! DESTROY SERVERS EASILY with this!
 // @namespace    -
-// @version      2.2
+// @version      4.0
 // @description  Autoheal
-// @author       Night
+// @author       Cloudy#9558
 // @match        *://moomoo.io/*
 // @match        http://dev.moomoo.io/*
 // @grant        none
@@ -11,14 +11,21 @@
 // ==/UserScript==
 
 
+const START_SSWX = [4, 132, 164, 116, 121, 112, 101, 2, 164, 100, 97, 116, 97, 147, 161, 52, 1, 192, 167, 111, 112, 116, 105, 111, 110, 115, 129, 168, 99, 111, 109, 112, 114, 101, 115, 115, 195, 163, 110, 115, 112, 161, 47];
+const END_SSWX = [4, 132, 164, 116, 121, 112, 101, 2, 164, 100, 97, 116, 97, 147, 161, 52, 0, 192, 167, 111, 112, 116, 105, 111, 110, 115, 129, 168, 99, 111, 109, 112, 114, 101, 115, 115, 195, 163, 110, 115, 112, 161, 47];
 
+const autoHealSpeed = 150; //Bigger number = SLOWER autoheal; fastest is 0
+
+var justDied = false;
 var ws;
 var MYID;
 var hasApple = true;
 var foodInHand = false;
 var autoheal = true;
+var autobull = true;
+var STATE = 0;
 
-document.title = "Moo Moo -- Autoheal ON";
+document.title = "Heal ON / Bull Hat OFF";
 
 function encodeSEND(json){
     let OC = msgpack5().encode(json);
@@ -27,20 +34,48 @@ function encodeSEND(json){
         return new Uint8Array(aAdd).buffer;
 }
 
+function bullHelmet(status){
+    var dataTemplate = {"data":[], "options":{"compress":false}, "nsp": "/", "type": 2};
+    dataTemplate["data"]= ["13", 0, status == "on" ? 7 : 0, 0];
+    //console.log(dataTemplate["data"]);
+    let encoded = encodeSEND(dataTemplate);
+    return encoded;
+}
+
+
 WebSocket.prototype.oldSend = WebSocket.prototype.send;
 WebSocket.prototype.send = function(m){
-    this.oldSend(m);
+    if (!ws){
+        ws = this;
+        console.log("WS SET");
+        socketFound(this);
+    }
     let x = new Uint8Array(m);
+
+    let x_arr_SSX = Array.from(x);
+    if (x_arr_SSX.length === 43 && autobull){
+         if (x_arr_SSX.every( (num, idx) => START_SSWX[idx]==num )){
+             console.log("started swing");
+             this.oldSend(bullHelmet("on"));
+         } else if (x_arr_SSX.every( (num, idx) => END_SSWX[idx]==num ) ){
+             console.log("ended swing");
+             this.oldSend(bullHelmet("off"));
+         }
+    }
+
+    this.oldSend(m);
+    let y = msgpack5().decode(x.slice(1, x.length)).data;
+    //console.log("SENT");
+    //console.log(y);
     let realData = msgpack5().decode(x.slice(1, x.length));
-    console.log(realData.data[0]);
+    //console.log(realData.data[0]);
     if (realData.data[0]=="5"){
         if (realData.data[1] == 0 || realData.data[1] == 1) foodInHand = !foodInHand;
         console.log(`Food in hand: ${foodInHand}`);
 
-    }
-    if (!ws){
-        ws = this;
-        socketFound(this);
+    } else if (realData.data[0]=="1"){
+      console.log("user respawned");
+       justDied = false;
     }
 };
 
@@ -56,8 +91,8 @@ function isElementVisible(e) {
 
 
 function heal(){
-    console.log("HERE I AM IN THE HEAL FUNC.");
-    var dataTemplate = {"type": 2, "data":[], "options":{"compress":false}, "nsp": "/"};
+    console.log(`HERE I AM IN THE HEAL FUNC with ${hasApple}`);
+    var dataTemplate = {"data":[], "options":{"compress":false}, "nsp": "/", "type": 2};
     if (hasApple){
         if (!haveApple()){
             heal();
@@ -84,20 +119,25 @@ function heal(){
 
 function handleMessage(m){
     let td = new Uint8Array(m.data);
+    //console.log(td);
+    //console.log(td.slice(98,-1));
     var info = msgpack5().decode(td.slice(1, td.length)).data;
+
 
     if (info[0] == "1" && !MYID){
         MYID =  info[1];
     }
 
-     console.log(info[0]);
     if (info[0] == "10" && info[1] == MYID && autoheal){
+          console.log("doing stuff");
+        console.log(info);
         if (info[2] < 100 && info[2] > 0){
        console.log("RECEIVED:");
         console.log(info);
+       console.log("heal notif sent");
        setTimeout( () => {
            heal();
-       }, 150);
+       }, autoHealSpeed);
         } else if (info[2] > 0) {
             var dataTemplate = {"type": 2, "data":[], "options":{"compress":false}, "nsp": "/"};
              dataTemplate["data"]=["4", 0, null];
@@ -105,22 +145,35 @@ function handleMessage(m){
             ws.send(encoded);
         } else {
             hasApple = true; //You've died tragically in combat; back to the apple for you!
+            console.log("Setting has apple to true from here")
         }
     }
     else if(info[0] == "11"){
+        console.log("doing death");
         hasApple = true;
+        justDied = true;
+
     }
 
 }
 
 function haveApple(){
+    console.log("Im being used and justDied is:" + justDied);
+    if (justDied){
+        hasApple = true;
+        return true;
+    }
     if (hasApple) hasApple = isElementVisible(document.getElementById("actionBarItem11"));
     return hasApple;
 }
 
 document.addEventListener('keypress', (e)=>{
    if (e.keyCode == 116 && document.activeElement.id.toLowerCase() !== 'chatbox'){
-        autoheal = !autoheal;
-       document.title = "Moo Moo -- Autoheal " + (autoheal ? "ON" : "OFF");
+       STATE+=1;
+       let coreIndex = STATE%4;
+       let truthArray = [ [1,2].includes(coreIndex), [0,1].includes(coreIndex)];
+       autobull = truthArray[0];
+       autoheal = truthArray[1];
+       document.title = "Heal " + (autoheal ? "ON" : "OFF") + " / Bull Hat " + (autobull ? "ON" : "OFF");
    }
 });
