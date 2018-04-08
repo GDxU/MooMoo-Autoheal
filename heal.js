@@ -22,7 +22,7 @@ var MYID;
 var hasApple = true;
 var foodInHand = false;
 var autoheal = true;
-var autobull = true;
+var autobull = false;
 var STATE = 0;
 
 document.title = "Heal ON / Bull Hat OFF";
