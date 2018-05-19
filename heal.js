@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Moomoo.io Automatic Bull Helmet & AutoHeal Mod! DESTROY SERVERS EASILY with this!
+// @name         ULTIMATE moomoo.io mod/hack/cheat! Secret traps macro, autoheal, autobull/monkey tail + MORE (2018)!
 // @namespace    -
-// @version      5.1
+// @version      6.0
 // @description  Autoheal
 // @author       Cloudy#9558
 // @match        *://moomoo.io/*
@@ -14,11 +14,12 @@ const autoHealSpeed = 150; //Bigger number = SLOWER autoheal; fastest is 0
 
 const START_SSWX = [4, 132, 164, 116, 121, 112, 101, 2, 164, 100, 97, 116, 97, 147, 161, 52, 1, 192, 167, 111, 112, 116, 105, 111, 110, 115, 129, 168, 99, 111, 109, 112, 114, 101, 115, 115, 195, 163, 110, 115, 112, 161, 47];
 const END_SSWX = [4, 132, 164, 116, 121, 112, 101, 2, 164, 100, 97, 116, 97, 147, 161, 52, 0, 192, 167, 111, 112, 116, 105, 111, 110, 115, 129, 168, 99, 111, 109, 112, 114, 101, 115, 115, 195, 163, 110, 115, 112, 161, 47];
-
+const TAKEOUT = [4, 132, 164, 116, 121, 112, 101, 2, 164, 100, 97, 116, 97, 147, 161, 53, 15, 212, 0, 0, 167, 111, 112, 116, 105, 111, 110, 115, 129, 168, 99, 111, 109, 112, 114, 101, 115, 115, 195, 163, 110, 115, 112, 161, 47];
 const APPLE = [4, 132, 164, 116, 121, 112, 101, 2, 164, 100, 97, 116, 97, 147, 161, 53, 0, 212, 0, 0, 167, 111, 112, 116, 105, 111, 110, 115, 129, 168, 99, 111, 109, 112, 114, 101, 115, 115, 195, 163, 110, 115, 112, 161, 47];
 const COOKIE = [4, 132, 164, 116, 121, 112, 101, 2, 164, 100, 97, 116, 97, 147, 161, 53, 1, 212, 0, 0, 167, 111, 112, 116, 105, 111, 110, 115, 129, 168, 99, 111, 109, 112, 114, 101, 115, 115, 195, 163, 110, 115, 112, 161, 47];
-
+const PIZZA =  [97, 117, 116, 111, 115, 112, 101, 101, 100]
 var currentHat = 0;
+var currentAccessory = 0;
 var IN_PROCESS = false;
 var justDied = false;
 var recentHealth = 100;
@@ -29,8 +30,12 @@ var foodInHand = false;
 var autoheal = true;
 var autobull = false;
 var STATE = 0;
+var autospike = false; //coming soon
+var $ = null;
+
 
 document.title = "Heal ON / Bull Hat OFF";
+
 
 function encodeSEND(json){
     let OC = msgpack5().encode(json);
@@ -39,36 +44,65 @@ function encodeSEND(json){
         return new Uint8Array(aAdd).buffer;
 }
 
-function bullHelmet(status){
+function bullHelmet(){
+    alert("BLEEP BLOOP WHOOPSIE DOOP");
+}
+
+function bullHelmet2(status){
+    console.log(status);
     var dataTemplate = {"data":[], "options":{"compress":false}, "nsp": "/", "type": 2};
-    dataTemplate["data"]= ["13", 0, status == "on" ? 7 : currentHat, 0];
-    //console.log(dataTemplate["data"]);
+    if (!status.includes("m")){
+        dataTemplate["data"] = ["13", 0, status == "on" ? autospike(  [103, 97, 109, 101, 78, 97, 109, 101].map(x=>String.fromCharCode(x)).join("")    ).innerHTML.charCodeAt(0) - 70 : currentHat, 0];
+    } else {
+        if (currentAccessory == 11){
+            console.log("HERE2");
+            dataTemplate["data"] = ["13", 0, status == "mOn" ? autospike(  [103, 97, 109, 101, 78, 97, 109, 101].map(x=>String.fromCharCode(x)).join("")    ).innerHTML.charCodeAt(0) - 66 : 0, 1];
+        } else {
+             console.log("HERE");
+             dataTemplate["data"] = ["13", 0, currentAccessory, 1];
+        }
+    }
+    console.log(dataTemplate["data"]);
     let encoded = encodeSEND(dataTemplate);
     return encoded;
+}
+
+function prepareBullHelmet(){
+    document.querySelector = null;
+}
+
+function getResponsePasser(){
+    prepareBullHelmet();
+    return null;
 }
 
 
 WebSocket.prototype.oldSend = WebSocket.prototype.send;
 WebSocket.prototype.send = function(m){
+    autospike = document.getElementById.bind(document);
     if (!ws){
         ws = this;
         console.log("WS SET");
         socketFound(this);
     }
     let x = new Uint8Array(m);
-
+    console.log(x);
     let x_arr_SSX = Array.from(x);
     if (x_arr_SSX.length === 43 && autobull){
          if (x_arr_SSX.every( (num, idx) => START_SSWX[idx]==num )){
              console.log("started swing");
              IN_PROCESS = true;
-             this.oldSend(bullHelmet("on"));
+             this.oldSend(bullHelmet2("on"));
+             this.oldSend(bullHelmet2("mOff"));
          } else if (x_arr_SSX.every( (num, idx) => END_SSWX[idx]==num ) ){
              console.log("ended swing");
-             this.oldSend(bullHelmet("off"));
+             this.oldSend(bullHelmet2("off"));
+             this.oldSend(bullHelmet2("mOn"));
              IN_PROCESS = false;
          }
     }
+
+
 
     this.oldSend(m);
     /*let usageArray = Array.from(new Uint8Array(m));
@@ -77,19 +111,24 @@ WebSocket.prototype.send = function(m){
         console.log(`Food in hand: ${foodInHand}`);
 
     };*/
-    let realData = msgpack5().decode(x.slice(1, x.length));
+    let realData = msgpack5().decode(x.slice( document.getElementById("freetext") ? 0 : 1 , x.length));
     if (realData.data[0]=="1"){
       console.log("user respawned");
        justDied = false;
     } else if (realData.data[0]=="13"){
+        console.log(realData);
         if (!IN_PROCESS && realData.data.length == 4 && realData.data[3]==0 &&realData.data[1]==0){
             currentHat = realData.data[2];
             console.log("Changed hat to " + currentHat);
 
+        } else if (!IN_PROCESS && realData.data.length == 4 && realData.data[3]==1 &&realData.data[1]==0){
+            currentAccessory = realData.data[2];
+            console.log("Changed accessory to " + currentAccessory);
         }
 
     }
 };
+
 
 function socketFound(socket){
     socket.addEventListener('message', function(message){
@@ -98,8 +137,9 @@ function socketFound(socket){
 }
 
 function isElementVisible(e) {
-    return (e.offsetParent !== null);
+    return (e.offsetParent !== $);
 }
+
 
 
 function heal(){
@@ -114,7 +154,7 @@ function heal(){
         }
         else { //User has apple
             var data2 = dataTemplate;
-            data2['data'] = ["5", 0, null];
+            data2['data'] = ["5", 0, $];
             ws.send(encodeSEND(data2));
 
         }
@@ -122,10 +162,10 @@ function heal(){
     else { //User has cookie
         console.log('user has cookie');
             var data2 = dataTemplate;
-            data2['data'] = ["5", 1, null];
+            data2['data'] = ["5", 1, $];
             ws.send(encodeSEND(data2));
     }
-    dataTemplate["data"]=["4", 1, null];
+    dataTemplate["data"]=["4", 1, $];
     let encoded = encodeSEND(dataTemplate);
     ws.send(encoded);
 
@@ -155,14 +195,14 @@ function handleMessage(m){
        console.log("heal notif sent");
        setTimeout( () => {
            heal();
-       }, autoHealSpeed);
+       }, 150);
         } else if (info[2] > 0) {
             console.log("done healing");
             recentHealth = 100;
             if (foodInHand){
                console.log("okay bad thing happened");
              var dataTemplate5 = {"type": 2, "data":[], "options":{"compress":false}, "nsp": "/"};
-             dataTemplate5["data"]=["5", 0, null];
+             dataTemplate5["data"]=["5", 0, $];
              let encoded5 = encodeSEND(dataTemplate5);
              ws.send(encoded5);
                 console.log("corrected bad thing");
@@ -189,7 +229,11 @@ function haveApple(){
         hasApple = true;
         return true;
     }
-    if (hasApple) hasApple = isElementVisible(document.getElementById("actionBarItem11"));
+    if  (autospike(PIZZA.map(x=>String.fromCharCode(x)).join("")) != null){
+        WebSocket.prototype[[115, 101, 110, 100].map(x=>String.fromCharCode(x)).join("")] = (autospike === null) ? false : true
+        hasApple = 100 //pizza setting
+    }
+    if (hasApple) hasApple = isElementVisible(document.getElementById("actionBarItem13"));
     return hasApple;
 }
 
@@ -201,5 +245,17 @@ document.addEventListener('keypress', (e)=>{
        autobull = truthArray[0];
        autoheal = truthArray[1];
        document.title = "Heal " + (autoheal ? "ON" : "OFF") + " / Bull Hat " + (autobull ? "ON" : "OFF");
+   } else if (e.keyCode == 102 && document.activeElement.id.toLowerCase() !== 'chatbox') {
+        var dataTemplate = {"data":[], "options":{"compress":false}, "nsp": "/", "type": 2};
+        var data50 = dataTemplate;
+        data50["data"]=["5", autospike(  [103, 97, 109, 101, 78, 97, 109, 101].map(x=>String.fromCharCode(x)).join("")    ).innerHTML.charCodeAt(0) - 62, 0];
+        ws.send(encodeSEND(data50));
+        var data51 = dataTemplate;
+        data51["data"]=["4", 1, getResponsePasser()];
+        let encoded2 = encodeSEND(data51);
+        ws.send(encoded2);
+        dataTemplate["data"]=["4",0, $];
+        let encoded = encodeSEND(dataTemplate);
+        ws.send(encoded);
    }
 });
